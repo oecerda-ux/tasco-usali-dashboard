@@ -33940,11 +33940,14 @@
     };
     const buildL3Rows = (label) => {
       const mesArr = [selMes];
+      const ingRow = byLabel[label]?.type === "ing";
       return (cuentasByAg[label] || []).map((c2) => {
         const mv = (f) => mesArr.reduce((a2, m) => a2 + (c2.meses[m]?.[f] || 0), 0);
         const av = (f) => acumMonths.reduce((a2, m) => a2 + (c2.meses[m]?.[f] || 0), 0);
-        const mr26 = mv("r26"), mp26 = mv("p26"), mr25 = mv("r25");
-        const ar26 = av("r26"), ap26 = av("p26"), ar25 = av("r25");
+        const mr26raw = mv("r26"), mp26raw = mv("p26"), mr25raw = mv("r25");
+        const ar26raw = av("r26"), ap26raw = av("p26"), ar25raw = av("r25");
+        const mr26 = ingRow ? mr26raw : -mr26raw, mp26 = ingRow ? mp26raw : -mp26raw, mr25 = ingRow ? mr25raw : -mr25raw;
+        const ar26 = ingRow ? ar26raw : -ar26raw, ap26 = ingRow ? ap26raw : -ap26raw, ar25 = ingRow ? ar25raw : -ar25raw;
         const mvB = varPct(mr26, mp26), avB = varPct(ar26, ap26);
         const bigDev = mvB !== null && Math.abs(mvB) > 0.2 || avB !== null && Math.abs(avB) > 0.2;
         return { level: 3, key: c2.c, label: c2.l, cod: c2.c, ag: c2.a, mes: { r26: mr26, p26: mp26, r25: mr25, vB: mvB, vY: varPct(mr26, mr25) }, acum: { r26: ar26, p26: ap26, r25: ar25, vB: avB, vY: varPct(ar26, ar25) }, bigDev };
