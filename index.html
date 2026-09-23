@@ -33773,7 +33773,16 @@
   }
   function TabAgrupaciones({ agTable, D, DC, setActiveTab, setSelectedCuenta }) {
     const ALL_M_TAB = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
-    const [selMes, setSelMes] = React.useState(CLOSED_MONTHS[CLOSED_MONTHS.length - 1]);
+    const [mesesSel, setMesesSel] = React.useState(/* @__PURE__ */ new Set([CLOSED_MONTHS[CLOSED_MONTHS.length - 1]]));
+    const toggleMes = (m) => setMesesSel((prev) => {
+      const next = new Set(prev);
+      if (next.has(m)) {
+        if (next.size > 1) next.delete(m);
+      } else next.add(m);
+      return next;
+    });
+    const mesesSelArr = CLOSED_MONTHS.filter((m) => mesesSel.has(m));
+    const selLabel = mesesSelArr.length === CLOSED_MONTHS.length ? PERIODO_LABEL : mesesSelArr.length === 1 ? mesesSelArr[0] : mesesSelArr.map((m) => m.slice(0, 3)).join(" + ");
     const [expandedL1, setExpandedL1] = React.useState(/* @__PURE__ */ new Set());
     const [expandedL2, setExpandedL2] = React.useState(/* @__PURE__ */ new Set());
     const toggleL1 = (k2) => setExpandedL1((p) => {
@@ -33854,10 +33863,8 @@
         codes: ["5-2-01-005", "5-2-01-006", "5-2-01-007", "5-2-01-022", "5-2-01-031", "5-2-01-034", "5-2-01-051"]
       }
     ];
-    const acumMonths = React.useMemo(() => {
-      const idx = ALL_M_TAB.indexOf(selMes);
-      return ALL_M_TAB.slice(0, idx + 1).filter((m) => CLOSED_MONTHS.includes(m));
-    }, [selMes]);
+    const acumMonths = CLOSED_MONTHS;
+    const acumLabel = PERIODO_LABEL;
     const byLabel = React.useMemo(() => Object.fromEntries(agTable.map((r2) => [r2.label, r2])), [agTable]);
     const cuentasByAg = React.useMemo(() => {
       const map2 = {};
@@ -33901,7 +33908,7 @@
       return { r26, p26, r25, vB: varPct(r26, p26), vY: varPct(r26, r25) };
     };
     const { rows, kpiData } = React.useMemo(() => {
-      const mesArr = [selMes];
+      const mesArr = mesesSelArr;
       const OPERATIVE_KEYS = ["hab", "rest", "mini", "eventos", "otros"];
       const opGroups = MARGIN_GROUPS.filter((g) => OPERATIVE_KEYS.includes(g.key));
       const sv = (arr, f) => arr.reduce((a2, r2) => a2 + r2[f], 0);
@@ -33929,16 +33936,16 @@
       const ebitM = add3(rboM, gaM), ebitA = add3(rboA, gaA);
       out.push({ level: 0, type: "ebitda", key: "ebitda", label: "EBITDA", mes: ebitM, acum: ebitA, sep: true });
       const ingLine = D.lines["Ingresos Totales Departamentales"] || {};
-      const ingM = { r26: ingLine[selMes]?.r26 || 0, p26: ingLine[selMes]?.p26 || 0, r25: ingLine[selMes]?.r25 || 0 };
+      const ingM = { r26: mesArr.reduce((a2, m) => a2 + (ingLine[m]?.r26 || 0), 0), p26: mesArr.reduce((a2, m) => a2 + (ingLine[m]?.p26 || 0), 0), r25: mesArr.reduce((a2, m) => a2 + (ingLine[m]?.r25 || 0), 0) };
       ingM.vB = varPct(ingM.r26, ingM.p26);
       ingM.vY = varPct(ingM.r26, ingM.r25);
       const ingA = { r26: acumMonths.reduce((a2, m) => a2 + (ingLine[m]?.r26 || 0), 0), p26: acumMonths.reduce((a2, m) => a2 + (ingLine[m]?.p26 || 0), 0), r25: acumMonths.reduce((a2, m) => a2 + (ingLine[m]?.r25 || 0), 0) };
       ingA.vB = varPct(ingA.r26, ingA.p26);
       ingA.vY = varPct(ingA.r26, ingA.r25);
       return { rows: out, kpiData: { ingM, ingA, mgM, mgA, rboM, rboA, ebitM, ebitA } };
-    }, [agTable, selMes, acumMonths, byLabel, D]);
+    }, [agTable, mesesSel, byLabel, D]);
     const buildL2Rows = (group) => {
-      const mesArr = [selMes];
+      const mesArr = mesesSelArr;
       return (group.members || []).map((lbl) => {
         const row = byLabel[lbl];
         if (!row) return null;
@@ -33953,7 +33960,7 @@
       }).filter(Boolean);
     };
     const buildL3Rows = (label) => {
-      const mesArr = [selMes];
+      const mesArr = mesesSelArr;
       const ingRow = byLabel[label]?.type === "ing";
       return (cuentasByAg[label] || []).map((c2) => {
         const mv = (f) => mesArr.reduce((a2, m) => a2 + (c2.meses[m]?.[f] || 0), 0);
@@ -33974,7 +33981,6 @@
     };
     const fmtPct = (v) => v === null || v === void 0 ? "\u2014" : (v * 100).toFixed(1) + "%";
     const kpiClr = (v) => v >= 0 ? TASCO.forest : TASCO.terracota;
-    const acumLabel = acumMonths.length > 1 ? `Ene\u2013${selMes.slice(0, 3)}` : selMes.slice(0, 3);
     const L1_BG = "#1a3a5c", L1_FG = TASCO.white;
     const L2_BG = "#dce6ef", L2_FG = TASCO.navy;
     const L3_BG = "#f4f7fa", L3_FG = TASCO.textSub;
@@ -34181,7 +34187,7 @@
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontSize: 10, color: TASCO.textMuted, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10, fontWeight: 600 }, children: k2.label }),
         /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", justifyContent: "space-between", gap: 8 }, children: [
           /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontSize: 9, color: TASCO.textMuted, marginBottom: 2 }, children: selMes }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontSize: 9, color: TASCO.textMuted, marginBottom: 2 }, children: selLabel }),
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontSize: 17, fontWeight: 700, fontFamily: "monospace", color: kpiClr(k2.mes.r26), lineHeight: 1 }, children: fmtM(k2.mes.r26) }),
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { marginTop: 5 }, children: k2.mes.vB !== null && /* @__PURE__ */ (0, import_jsx_runtime.jsx)(VB, { val: k2.mes.vB }) })
           ] }),
@@ -34195,11 +34201,11 @@
       /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { background: TASCO.bgCard, borderRadius: 10, padding: "10px 16px", border: "1px solid " + TASCO.border, marginBottom: 16, display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }, children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { fontSize: 11, color: TASCO.textMuted, fontWeight: 600, marginRight: 4 }, children: "Per\xEDodo:" }),
         ALL_M_TAB.map((m) => {
-          const isClosed = CLOSED_MONTHS.includes(m), active = selMes === m;
+          const isClosed = CLOSED_MONTHS.includes(m), active = mesesSel.has(m);
           return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
             "button",
             {
-              onClick: () => isClosed && setSelMes(m),
+              onClick: () => isClosed && toggleMes(m),
               disabled: !isClosed,
               style: { padding: "4px 12px", borderRadius: 20, border: active ? "none" : "1px solid " + TASCO.border, background: active ? TASCO.navy : isClosed ? TASCO.white : "transparent", color: active ? TASCO.white : isClosed ? TASCO.textSub : TASCO.border, cursor: isClosed ? "pointer" : "default", fontSize: 11, fontWeight: 600, transition: "all .15s", opacity: isClosed ? 1 : 0.35 },
               children: m.slice(0, 3)
@@ -34217,7 +34223,7 @@
         /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("thead", { children: [
           /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("tr", { style: { background: TASCO.navy }, children: [
             /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("th", { colSpan: 5, style: { padding: "9px 8px", textAlign: "center", color: TASCO.white, fontSize: 11, fontWeight: 700, letterSpacing: 0.5, borderRight: "2px solid rgba(255,255,255,0.2)" }, children: [
-              selMes,
+              selLabel,
               " 2026"
             ] }),
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("th", { style: { padding: "9px 12px", textAlign: "center", color: TASCO.white, fontSize: 12, fontWeight: 700, width: 200, borderLeft: "2px solid rgba(255,255,255,0.2)", borderRight: "2px solid rgba(255,255,255,0.2)" }, children: "AGRUPACI\xD3N" }),
@@ -34234,7 +34240,7 @@
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("th", { style: { ...thS, width: 68 }, children: "2025" }),
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("th", { style: { ...thS, width: 58, borderRight: "2px solid " + TASCO.border }, children: "Var%" }),
             /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("th", { style: { ...thC, width: 200 }, children: [
-              selMes,
+              selLabel,
               " \xB7 ",
               acumLabel
             ] }),
@@ -34251,90 +34257,23 @@
   }
   function TabDirectorio({ D, DC, kpiConsolidado, cc, setSelectedCuenta, setActiveTab }) {
     const ALL_M = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
-    const [perSel, setPerSel] = React.useState("ytd");
+    const [mesesSel, setMesesSel] = React.useState(new Set(CLOSED_MONTHS));
     const [sortMode, setSortMode] = React.useState("monto");
-    const acumMonths = perSel === "ytd" ? CLOSED_MONTHS : CLOSED_MONTHS.includes(perSel) ? [perSel] : CLOSED_MONTHS;
+    const toggleMes = (m) => setMesesSel((prev) => {
+      const next = new Set(prev);
+      if (next.has(m)) {
+        if (next.size > 1) next.delete(m);
+      } else next.add(m);
+      return next;
+    });
+    const selectYtd = () => setMesesSel(new Set(CLOSED_MONTHS));
+    const acumMonths = CLOSED_MONTHS.filter((m) => mesesSel.has(m));
+    const isYtd = acumMonths.length === CLOSED_MONTHS.length;
+    const selLabel = isYtd ? PERIODO_LABEL : acumMonths.length === 1 ? acumMonths[0] : acumMonths.map((m) => m.slice(0, 3)).join(" + ");
     const kpiPeriod = React.useMemo(() => {
-      if (perSel === "ytd") return kpiConsolidado;
-      const lines = D.lines;
-      const m = perSel;
-      const sum = (key, f) => lines[key]?.[m]?.[f] || 0;
-      const nd_r26 = sum("Noches de habitaci\xF3n disponibles", "r26");
-      const hab_r26 = sum("Total Ingresos por habitaciones", "r26");
-      const ing_r26 = sum("Ingresos Totales Departamentales", "r26");
-      const ing_p26 = sum("Ingresos Totales Departamentales", "p26");
-      const ing_r25 = sum("Ingresos Totales Departamentales", "r25");
-      const rbo_r26 = sum("Resultado Bruto de Operaci\xF3n", "r26");
-      const rbo_p26 = sum("Resultado Bruto de Operaci\xF3n", "p26");
-      const rbo_r25 = sum("Resultado Bruto de Operaci\xF3n", "r25");
-      const ebitda_r26 = sum("EBITDA", "r26");
-      const ebitda_p26 = sum("EBITDA", "p26");
-      const ebitda_r25 = sum("EBITDA", "r25");
-      const ocu_r26 = lines["Ocupaci\xF3n"]?.[m]?.r26 || null;
-      const ocu_p26 = lines["Ocupaci\xF3n"]?.[m]?.p26 || null;
-      const ocu_r25 = lines["Ocupaci\xF3n"]?.[m]?.r25 || null;
-      const adr_r26 = lines["Tarifa Promedio Diaria NETO"]?.[m]?.r26 || null;
-      const adr_p26 = lines["Tarifa Promedio Diaria NETO"]?.[m]?.p26 || null;
-      const adr_r25 = lines["Tarifa Promedio Diaria NETO"]?.[m]?.r25 || null;
-      const revpar_r26 = lines["RevPAR NETO"]?.[m]?.r26 || null;
-      const revpar_p26 = lines["RevPAR NETO"]?.[m]?.p26 || null;
-      const revpar_r25 = lines["RevPAR NETO"]?.[m]?.r25 || null;
-      const trevpar_r26 = nd_r26 > 0 ? ing_r26 / nd_r26 : null;
-      const trevpar_p26 = lines["Noches de habitaci\xF3n disponibles"]?.[m]?.p26 > 0 ? ing_p26 / lines["Noches de habitaci\xF3n disponibles"]?.[m]?.p26 : null;
-      const trevpar_r25 = lines["Noches de habitaci\xF3n disponibles"]?.[m]?.r25 > 0 ? ing_r25 / lines["Noches de habitaci\xF3n disponibles"]?.[m]?.r25 : null;
-      const isCPBd = cc === "Club Playa Blanca";
-      const DC_d = CUENTAS[cc] || [];
-      const AG_ING_GRUP = ["Ingresos Habitaciones", "Ingresos Restaurant", "Ingresos Minimarket", "Ingresos Eventos", "Otros Ingresos"];
-      const ingGrup_r26 = DC_d.reduce((a2, x2) => a2 + (AG_ING_GRUP.includes(x2.a) ? x2.meses[m]?.r26 || 0 : 0), 0);
-      const ingGrup_p26 = DC_d.reduce((a2, x2) => a2 + (AG_ING_GRUP.includes(x2.a) ? x2.meses[m]?.p26 || 0 : 0), 0);
-      const ingGrup_r25 = DC_d.reduce((a2, x2) => a2 + (AG_ING_GRUP.includes(x2.a) ? x2.meses[m]?.r25 || 0 : 0), 0);
-      const mrgGrup_r26 = D.lines?.["Total Margen Departamentales"]?.[m]?.r26 || 0;
-      const mrgGrup_p26 = D.lines?.["Total Margen Departamentales"]?.[m]?.p26 || 0;
-      const mrgGrup_r25 = D.lines?.["Total Margen Departamentales"]?.[m]?.r25 || 0;
-      const gop_r26 = ingGrup_r26 > 0 ? mrgGrup_r26 / ingGrup_r26 : null;
-      const gop_p26 = ingGrup_p26 > 0 ? mrgGrup_p26 / ingGrup_p26 : null;
-      const gop_r25 = ingGrup_r25 > 0 ? mrgGrup_r25 / ingGrup_r25 : null;
-      const acctD = (code, f) => {
-        const x2 = DC_d.find((c2) => c2.c === code);
-        return x2?.meses?.[m]?.[f] || 0;
-      };
-      const agD = (key, f) => D.agrupaciones?.[key]?.[m]?.[f] || 0;
-      const MNTH_FNS2 = { Enero: "2026-01", Febrero: "2026-02", Marzo: "2026-03", Abril: "2026-04", Mayo: "2026-05", Junio: "2026-06", Julio: "2026-07", Agosto: "2026-08" };
-      const mk2 = MNTH_FNS2[m] || "";
-      const restFNSd = FNS_DATA?.VR?.["Restaurante"] || {};
-      const pbFNSd = FNS_DATA?.VR?.["Pool Bar"] || {};
-      const fns_ing_d = (restFNSd[mk2]?.imp || 0) + (pbFNSd[mk2]?.imp || 0);
-      const fns_cos_d = (restFNSd[mk2]?.coste || 0) + (pbFNSd[mk2]?.coste || 0);
-      const mrgMP_d = isCPBd && fns_ing_d > 0 ? (fns_ing_d - fns_cos_d) / fns_ing_d : null;
-      const ingHab_d = agD("Ingresos Habitaciones", "r26");
-      const cosHab_d = agD("Costos Habitaciones", "r26") + agD("Gastos Habitaciones", "r26");
-      const ingHabP = agD("Ingresos Habitaciones", "p26");
-      const cosHabP = agD("Costos Habitaciones", "p26") + agD("Gastos Habitaciones", "p26");
-      const ingHabR = agD("Ingresos Habitaciones", "r25");
-      const cosHabR = agD("Costos Habitaciones", "r25") + agD("Gastos Habitaciones", "r25");
-      const mrgHab_d = ingHab_d > 0 ? (ingHab_d - cosHab_d) / ingHab_d : null;
-      const mrgHabP = ingHabP > 0 ? (ingHabP - cosHabP) / ingHabP : null;
-      const mrgHabR = ingHabR > 0 ? (ingHabR - cosHabR) / ingHabR : null;
-      const AG_COST_D = ["Costos Restaurant", "Costos Minimarket"];
-      const AG_ING_D = ["Ingresos Restaurant", "Ingresos Minimarket"];
-      const ingA_d = DC_d.reduce((a2, x2) => a2 + (AG_ING_D.includes(x2.a) ? x2.meses[m]?.r26 || 0 : 0), 0);
-      const cosA_d = DC_d.reduce((a2, x2) => a2 + (AG_COST_D.includes(x2.a) ? x2.meses[m]?.r26 || 0 : 0), 0);
-      const ingAP = DC_d.reduce((a2, x2) => a2 + (AG_ING_D.includes(x2.a) ? x2.meses[m]?.p26 || 0 : 0), 0);
-      const cosAP = DC_d.reduce((a2, x2) => a2 + (AG_COST_D.includes(x2.a) ? x2.meses[m]?.p26 || 0 : 0), 0);
-      const ingAR = DC_d.reduce((a2, x2) => a2 + (AG_ING_D.includes(x2.a) ? x2.meses[m]?.r25 || 0 : 0), 0);
-      const cosAR = DC_d.reduce((a2, x2) => a2 + (AG_COST_D.includes(x2.a) ? x2.meses[m]?.r25 || 0 : 0), 0);
-      const mrgAabb_d = ingA_d > 0 ? (ingA_d - cosA_d) / ingA_d : null;
-      const mrgAabbP = ingAP > 0 ? (ingAP - cosAP) / ingAP : null;
-      const mrgAabbR = ingAR > 0 ? (ingAR - cosAR) / ingAR : null;
-      const mrgOp_d = ing_r26 > 0 ? rbo_r26 / ing_r26 : null;
-      const mrgOpP = ing_p26 > 0 ? rbo_p26 / ing_p26 : null;
-      const mrgOpR = ing_r25 > 0 ? rbo_r25 / ing_r25 : null;
-      const mrgEb_d = ing_r26 > 0 ? ebitda_r26 / ing_r26 : null;
-      const mrgEbP = ing_p26 > 0 ? ebitda_p26 / ing_p26 : null;
-      const mrgEbR = ing_r25 > 0 ? ebitda_r25 / ing_r25 : null;
-      const label = perSel.slice(0, 3) + " 2026";
-      return { label, isCPB: isCPBd, ocu: { v: ocu_r26, ref: ocu_p26, prev: ocu_r25, type: "pct" }, adr: { v: adr_r26, ref: adr_p26, prev: adr_r25, type: "clp" }, revpar: { v: revpar_r26, ref: revpar_p26, prev: revpar_r25, type: "clp" }, trevpar: { v: trevpar_r26, ref: trevpar_p26, prev: trevpar_r25, type: "clp" }, ing: { v: ing_r26, ref: ing_p26, prev: ing_r25, type: "clp" }, rbo: { v: rbo_r26, ref: rbo_p26, prev: rbo_r25, type: "clp" }, ebitda: { v: ebitda_r26, ref: ebitda_p26, prev: ebitda_r25, type: "clp" }, gopPct: { v: gop_r26, ref: gop_p26, prev: gop_r25, type: "pct2" }, mrgHab: { v: mrgHab_d, ref: mrgHabP, prev: mrgHabR, type: "pct2" }, mrgMP: { v: mrgMP_d, ref: null, prev: null, type: "pct2" }, mrgAabb: { v: mrgAabb_d, ref: mrgAabbP, prev: mrgAabbR, type: "pct2" }, mrgOp: { v: mrgOp_d, ref: mrgOpP, prev: mrgOpR, type: "pct2" }, mrgEb: { v: mrgEb_d, ref: mrgEbP, prev: mrgEbR, type: "pct2" } };
-    }, [D, kpiConsolidado, perSel]);
+      if (isYtd) return kpiConsolidado;
+      return computeHotelKpis(D, cc, acumMonths);
+    }, [D, cc, kpiConsolidado, isYtd, mesesSel]);
     const deviations = React.useMemo(() => {
       const rows = [];
       (DC || []).forEach((x2) => {
@@ -34358,7 +34297,7 @@
       const m = v / 1e6;
       return (m >= 0 ? "" : "\u2212") + "$" + Math.abs(m).toFixed(1) + "M";
     };
-    const perLabel = perSel === "ytd" ? kpiPeriod?.label || "YTD" : perSel + " 2026";
+    const perLabel = selLabel + " 2026";
     const KpiCard = ({ label, d }) => {
       if (!d) return null;
       const vBud = varPct(d.v, d.ref), vYoy = varPct(d.v, d.prev);
@@ -34421,10 +34360,10 @@
     return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
       /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { background: TASCO.bgCard, borderRadius: 10, padding: "10px 16px", border: "1px solid " + TASCO.border, marginBottom: 16, display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }, children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { fontSize: 11, color: TASCO.textMuted, fontWeight: 600, marginRight: 4 }, children: "Per\xEDodo:" }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { onClick: () => setPerSel("ytd"), style: { padding: "4px 14px", borderRadius: 20, border: perSel === "ytd" ? "none" : "1px solid " + TASCO.border, background: perSel === "ytd" ? TASCO.navy : "transparent", color: perSel === "ytd" ? TASCO.white : TASCO.textSub, cursor: "pointer", fontSize: 11, fontWeight: 700, transition: "all .15s" }, children: "YTD Acum." }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { onClick: selectYtd, style: { padding: "4px 14px", borderRadius: 20, border: isYtd ? "none" : "1px solid " + TASCO.border, background: isYtd ? TASCO.navy : "transparent", color: isYtd ? TASCO.white : TASCO.textSub, cursor: "pointer", fontSize: 11, fontWeight: 700, transition: "all .15s" }, children: "YTD Acum." }),
         CLOSED_MONTHS.map((m) => {
-          const active = perSel === m;
-          return /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { onClick: () => setPerSel(m), style: { padding: "4px 12px", borderRadius: 20, border: active ? "none" : "1px solid " + TASCO.border, background: active ? TASCO.terracota : TASCO.white, color: active ? TASCO.white : TASCO.textSub, cursor: "pointer", fontSize: 11, fontWeight: 600, transition: "all .15s" }, children: m.slice(0, 3) }, m);
+          const active = mesesSel.has(m);
+          return /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { onClick: () => toggleMes(m), style: { padding: "4px 12px", borderRadius: 20, border: active ? "none" : "1px solid " + TASCO.border, background: active ? TASCO.terracota : TASCO.white, color: active ? TASCO.white : TASCO.textSub, cursor: "pointer", fontSize: 11, fontWeight: 600, transition: "all .15s" }, children: m.slice(0, 3) }, m);
         })
       ] }),
       /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { marginBottom: 6 }, children: [
@@ -35183,19 +35122,30 @@
   }
   var OTROS_INGRESOS = { "CPB": { "svc_mes": { "Arriendo Quincho": { "Agosto": 7e4, "Enero": 315e3, "Febrero": 42e4, "Julio": 175e3, "Junio": 7e4, "Marzo": 14e4, "Mayo": 175e3 }, "Arriendo Quincho TC": { "Febrero": 63e3 }, "Arriendo quincho + lavado de loza": { "Enero": 1e5, "Febrero": 1e5, "Mayo": 15e3 }, "Cancha Padel": { "Abril": 3e4, "Enero": 719999.9904324, "Febrero": 525e3, "Junio": 6e4, "Marzo": 165e3, "Mayo": 45e3 }, "Cancha Padel TC": { "Febrero": 54e3 }, "Cancha pickleball": { "Enero": 3e4, "Febrero": 2e4, "Marzo": 6e4, "Mayo": 1e4 }, "Lavado de loza Quincho": { "Agosto": 15e3, "Julio": 15e3, "Junio": 15e3 }, "Lavander\xEDa (lavado y secado)": { "Agosto": 1e4, "Enero": 134999.9968108, "Febrero": 4e5, "Marzo": 5e4 }, "Lavander\xEDa - lavado": { "Enero": 17e3, "Febrero": 56e3 }, "Lavander\xEDa - secado": { "Enero": 7e3, "Febrero": 14e3 }, "Perdida de llave": { "Marzo": 15e3 }, "Reposiciones": { "Abril": 42e3, "Agosto": 37500, "Enero": 105500, "Febrero": 147990, "Julio": 55500, "Junio": 13500, "Marzo": 12500, "Mayo": 74500 }, "Salon Mirador": { "Agosto": 5e4, "Junio": 1e5, "Marzo": 183264, "Mayo": 5e4 }, "Sauna": { "Agosto": 2e4, "Febrero": 2e4, "Julio": 2e4, "Marzo": 7e4 }, "Visitas": { "Agosto": 3e4, "Enero": 3e4, "Febrero": 105e3, "Junio": 6e4, "Marzo": 15e3 } }, "svc_n": { "Arriendo Quincho": { "Agosto": 2, "Enero": 9, "Febrero": 12, "Julio": 5, "Junio": 2, "Marzo": 2, "Mayo": 4 }, "Arriendo Quincho TC": { "Febrero": 1 }, "Arriendo quincho + lavado de loza": { "Enero": 2, "Febrero": 2, "Mayo": 1 }, "Cancha Padel": { "Abril": 2, "Enero": 48, "Febrero": 33, "Junio": 4, "Marzo": 6, "Mayo": 3 }, "Cancha Padel TC": { "Febrero": 2 }, "Cancha pickleball": { "Enero": 3, "Febrero": 2, "Marzo": 3, "Mayo": 1 }, "Lavado de loza Quincho": { "Agosto": 1, "Julio": 1, "Junio": 1 }, "Lavander\xEDa (lavado y secado)": { "Agosto": 1, "Enero": 21, "Febrero": 40, "Marzo": 4 }, "Lavander\xEDa - lavado": { "Enero": 3, "Febrero": 7 }, "Lavander\xEDa - secado": { "Enero": 1, "Febrero": 2 }, "Perdida de llave": { "Marzo": 1 }, "Reposiciones": { "Abril": 10, "Agosto": 12, "Enero": 24, "Febrero": 37, "Julio": 14, "Junio": 4, "Marzo": 5, "Mayo": 10 }, "Salon Mirador": { "Agosto": 1, "Junio": 2, "Marzo": 1, "Mayo": 1 }, "Sauna": { "Agosto": 1, "Febrero": 2, "Julio": 2, "Marzo": 7 }, "Visitas": { "Agosto": 1, "Enero": 2, "Febrero": 3, "Junio": 1, "Marzo": 1 } }, "svc_total": { "Arriendo Quincho": 1365e3, "Arriendo Quincho TC": 63e3, "Arriendo quincho + lavado de loza": 215e3, "Cancha Padel": 15449999904324e-7, "Cancha Padel TC": 54e3, "Cancha pickleball": 12e4, "Lavado de loza Quincho": 45e3, "Lavander\xEDa (lavado y secado)": 594999.9968108, "Lavander\xEDa - lavado": 73e3, "Lavander\xEDa - secado": 21e3, "Perdida de llave": 15e3, "Reposiciones": 488990, "Salon Mirador": 383264, "Sauna": 13e4, "Visitas": 24e4 }, "mes_total": { "Abril": 72e3, "Agosto": 232500, "Enero": 14594999872432e-7, "Febrero": 1924990, "Julio": 265500, "Junio": 318500, "Marzo": 710764, "Mayo": 369500 }, "n_total": { "Abril": 12, "Agosto": 19, "Enero": 113, "Febrero": 143, "Julio": 22, "Junio": 14, "Marzo": 30, "Mayo": 20 }, "canal_total": { "Airbnb": 4e4, "Book2Dream": 12500, "Booking": 54500, "Corporativo": 102500, "DTT Travel": 17500, "Email": 1698764, "FNS": 244499.9984054, "Pasante": 125e3, "Telefono": 14739999904324e-7, "Tiempo Compartido": 948990, "Walk-in": 12500, "Whatsapp": 622499.9984054 }, "canal_mes": { "Airbnb": { "Abril": 2500, "Marzo": 37500 }, "Book2Dream": { "Agosto": 1e4, "Julio": 2500 }, "Booking": { "Febrero": 2e3, "Marzo": 52500 }, "Corporativo": { "Mayo": 102500 }, "DTT Travel": { "Julio": 15e3, "Junio": 2500 }, "Email": { "Abril": 15e3, "Agosto": 5e3, "Enero": 432500, "Febrero": 720500, "Julio": 16500, "Junio": 2500, "Marzo": 423264, "Mayo": 83500 }, "FNS": { "Enero": 12499.9984054, "Febrero": 232e3 }, "Pasante": { "Febrero": 65e3, "Junio": 5e4, "Marzo": 1e4 }, "Telefono": { "Abril": 49500, "Agosto": 35e3, "Enero": 670499.9904324, "Febrero": 189e3, "Julio": 139e3, "Junio": 263500, "Marzo": 5e4, "Mayo": 77500 }, "Tiempo Compartido": { "Abril": 2500, "Agosto": 42500, "Enero": 209500, "Febrero": 604490, "Julio": 4e4, "Marzo": 15e3, "Mayo": 35e3 }, "Walk-in": { "Febrero": 12500 }, "Whatsapp": { "Abril": 2500, "Agosto": 14e4, "Enero": 134499.9984054, "Febrero": 99500, "Julio": 52500, "Marzo": 122500, "Mayo": 71e3 } }, "hab_total": { "101": 245e3, "102": 75e3, "103": 7e3, "104": 35e3, "104 105 103": 5e4, "105": 27e3, "106": 87e3, "107": 4500, "108": 232500, "108 306": 7500, "109": 15e3, "110": 93500, "110 108 208 504 406 209 501 109 106": 105e3, "201": 4e4, "203": 11e4, "205": 201500, "206": 9e4, "207": 1e4, "207 311 407 507 511 312 406 512 506 212 306 206 509 106": 258264, "208": 27e3, "209": 93e3, "210": 157500, "211": 45e3, "212": 45e3, "301": 145e3, "302": 45e3, "304": 87500, "305": 111500, "306": 151e3, "306 312 309 106": 15e3, "307": 5e3, "307 309": 2500, "308": 95500, "309": 235e3, "310": 57500, "311": 74999.9928243, "312": 157500, "401": 236500, "401 405": 45e3, "402": 29999.9984054, "405": 7e4, "406": 61500, "407": 127e3, "408": 102500, "408 212": 7500, "409": 316499.9984054, "409 509": 5e4, "410": 162e3, "411": 22500, "412": 39500, "501": 37500, "502": 2e4, "504": 17990, "505": 27e3, "506": 49999.9976081, "507": 65e3, "508": 77500, "509": 77500, "510": 216e3, "511": 62500, "512": 62500, "Sin dato": 125e3 }, "hab_svc": { "101": { "Arriendo Quincho": 3, "Cancha Padel": 8, "Lavander\xEDa (lavado y secado)": 2, "Reposiciones": 2 }, "102": { "Cancha Padel": 3, "Lavander\xEDa (lavado y secado)": 3 }, "103": { "Lavander\xEDa - secado": 1 }, "104": { "Lavander\xEDa (lavado y secado)": 4 }, "104 105 103": { "Arriendo Quincho": 1, "Cancha Padel": 1 }, "105": { "Cancha pickleball": 1, "Lavander\xEDa (lavado y secado)": 1, "Lavander\xEDa - lavado": 1 }, "106": { "Arriendo Quincho": 1, "Cancha Padel": 1, "Cancha pickleball": 1, "Reposiciones": 3, "Visitas": 1 }, "107": { "Reposiciones": 2 }, "108": { "Arriendo Quincho": 2, "Cancha Padel": 4, "Lavander\xEDa (lavado y secado)": 3, "Lavander\xEDa - lavado": 2, "Reposiciones": 2, "Salon Mirador": 1 }, "108 306": { "Reposiciones": 1 }, "109": { "Lavander\xEDa (lavado y secado)": 1, "Reposiciones": 2 }, "110": { "Arriendo Quincho": 1, "Lavander\xEDa (lavado y secado)": 3, "Reposiciones": 5 }, "110 108 208 504 406 209 501 109 106": { "Arriendo Quincho": 1 }, "201": { "Lavander\xEDa (lavado y secado)": 4, "Reposiciones": 2 }, "203": { "Arriendo Quincho": 1, "Cancha Padel": 3, "Lavander\xEDa (lavado y secado)": 4 }, "205": { "Arriendo Quincho": 1, "Cancha Padel": 7, "Lavander\xEDa (lavado y secado)": 2, "Lavander\xEDa - lavado": 1, "Reposiciones": 1, "Visitas": 1 }, "206": { "Cancha Padel": 2, "Lavander\xEDa (lavado y secado)": 6, "Reposiciones": 2, "Sauna": 1 }, "207": { "Sauna": 1 }, "207 311 407 507 511 312 406 512 506 212 306 206 509 106": { "Cancha Padel": 1, "Cancha pickleball": 1, "Salon Mirador": 1 }, "208": { "Reposiciones": 6 }, "209": { "Arriendo Quincho": 1, "Cancha pickleball": 1, "Lavander\xEDa (lavado y secado)": 3, "Reposiciones": 5 }, "210": { "Arriendo Quincho": 2, "Cancha Padel": 4, "Reposiciones": 3 }, "211": { "Arriendo Quincho": 1, "Reposiciones": 3 }, "212": { "Cancha Padel": 3 }, "301": { "Arriendo Quincho": 1, "Cancha Padel": 4, "Lavander\xEDa (lavado y secado)": 3, "Reposiciones": 3, "Sauna": 1 }, "302": { "Cancha Padel": 3 }, "304": { "Cancha Padel": 3, "Cancha pickleball": 1, "Lavander\xEDa (lavado y secado)": 3, "Reposiciones": 1 }, "305": { "Cancha Padel": 5, "Lavander\xEDa (lavado y secado)": 1, "Lavander\xEDa - lavado": 2, "Reposiciones": 1, "Sauna": 1 }, "306": { "Arriendo Quincho": 1, "Cancha pickleball": 1, "Reposiciones": 3, "Visitas": 2 }, "306 312 309 106": { "Lavado de loza Quincho": 1 }, "307": { "Reposiciones": 1 }, "307 309": { "Reposiciones": 1 }, "308": { "Cancha Padel": 2, "Lavander\xEDa (lavado y secado)": 1, "Lavander\xEDa - lavado": 1, "Reposiciones": 8, "Sauna": 1 }, "309": { "Arriendo Quincho": 4, "Cancha Padel": 3, "Lavander\xEDa (lavado y secado)": 3, "Reposiciones": 2, "Sauna": 1 }, "310": { "Cancha Padel": 1, "Reposiciones": 5 }, "311": { "Cancha Padel": 3, "Lavander\xEDa (lavado y secado)": 2, "Reposiciones": 4 }, "312": { "Arriendo Quincho": 3, "Lavado de loza Quincho": 1, "Lavander\xEDa (lavado y secado)": 3, "Reposiciones": 2 }, "401": { "Arriendo Quincho": 3, "Cancha Padel": 4, "Lavander\xEDa (lavado y secado)": 1, "Reposiciones": 2, "Sauna": 1 }, "401 405": { "Cancha Padel": 1 }, "402": { "Cancha Padel": 1, "Lavander\xEDa (lavado y secado)": 1, "Reposiciones": 2 }, "405": { "Cancha Padel": 1, "Lavander\xEDa (lavado y secado)": 3, "Reposiciones": 1, "Visitas": 1 }, "406": { "Cancha Padel": 3, "Reposiciones": 4 }, "407": { "Arriendo Quincho": 2, "Lavander\xEDa (lavado y secado)": 1, "Lavander\xEDa - secado": 1, "Reposiciones": 2 }, "408": { "Perdida de llave": 1, "Reposiciones": 3, "Sauna": 2, "Visitas": 1 }, "408 212": { "Reposiciones": 1 }, "409": { "Arriendo Quincho": 3, "Arriendo quincho + lavado de loza": 1, "Cancha Padel": 7, "Lavado de loza Quincho": 1, "Lavander\xEDa (lavado y secado)": 3, "Reposiciones": 4 }, "409 509": { "Salon Mirador": 1 }, "410": { "Arriendo Quincho": 1, "Arriendo Quincho TC": 1, "Cancha Padel TC": 2, "Reposiciones": 3 }, "411": { "Reposiciones": 3, "Visitas": 1 }, "412": { "Cancha Padel": 2, "Lavander\xEDa - secado": 1, "Reposiciones": 1 }, "501": { "Cancha Padel": 1, "Lavander\xEDa (lavado y secado)": 2, "Reposiciones": 1 }, "502": { "Cancha Padel": 1, "Lavander\xEDa (lavado y secado)": 1 }, "504": { "Lavander\xEDa (lavado y secado)": 1, "Reposiciones": 1 }, "505": { "Lavander\xEDa - lavado": 3, "Sauna": 1 }, "506": { "Cancha Padel": 2, "Reposiciones": 3, "Sauna": 1 }, "507": { "Arriendo Quincho": 1, "Cancha pickleball": 2 }, "508": { "Arriendo quincho + lavado de loza": 1, "Cancha Padel": 1, "Reposiciones": 5 }, "509": { "Cancha Padel": 4, "Cancha pickleball": 1, "Reposiciones": 3 }, "510": { "Arriendo Quincho": 2, "Arriendo quincho + lavado de loza": 1, "Cancha Padel": 3, "Lavander\xEDa (lavado y secado)": 1, "Reposiciones": 4, "Salon Mirador": 1 }, "511": { "Arriendo quincho + lavado de loza": 1, "Reposiciones": 2 }, "512": { "Cancha Padel": 4, "Reposiciones": 1 }, "Sin dato": { "Arriendo quincho + lavado de loza": 1, "Salon Mirador": 1, "Sauna": 1, "Visitas": 1 } } }, "ML": { "svc_mes": { "Estacionamiento Playa": { "Abril": 1e4, "Enero": 1385e3, "Febrero": 199e4, "Marzo": 55e3 }, "Hot Tub 1 hora": { "Abril": 69999.9944189, "Enero": 245994.39441890002, "Febrero": 524999.9944189, "Marzo": 175e3 } }, "svc_n": { "Estacionamiento Playa": { "Abril": 2, "Enero": 139, "Febrero": 192, "Marzo": 6 }, "Hot Tub 1 hora": { "Abril": 2, "Enero": 7, "Febrero": 15, "Marzo": 5 } }, "svc_total": { "Estacionamiento Playa": 344e4, "Hot Tub 1 hora": 10159943832567e-7 }, "mes_total": { "Abril": 79999.9944189, "Enero": 16309943944189e-7, "Febrero": 25149999944189e-7, "Marzo": 23e4 }, "n_total": { "Abril": 4, "Enero": 146, "Febrero": 207, "Marzo": 11 }, "canal_total": { "Airbnb": 45e3, "Booking": 685994.3944189, "DTT Travel": 35e3, "Expedia": 69999.9888378, "Pagina WEB": 35e3, "Telefono": 3585e3 }, "canal_mes": { "Airbnb": { "Abril": 35e3, "Febrero": 1e4 }, "Booking": { "Abril": 34999.9944189, "Enero": 175994.4, "Febrero": 335e3, "Marzo": 14e4 }, "DTT Travel": { "Marzo": 35e3 }, "Expedia": { "Enero": 34999.9944189, "Febrero": 34999.9944189 }, "Pagina WEB": { "Enero": 35e3 }, "Telefono": { "Abril": 1e4, "Enero": 1385e3, "Febrero": 2135e3, "Marzo": 55e3 } }, "hab_total": { "Antuco": 35e3, "Carran": 175e3, "Choshuenco": 35e3, "Choshuenco Lanin": 35e3, "Lanin": 7e4, "Llaima": 70994.4, "Lonquimay": 54999.9944189, "Mocho": 115e3, "Osorno": 14e4, "Puntiagudo": 139999.9944189, "Puyehue": 105e3, "Sin dato": 341e4, "Villarrica": 69999.9944189 }, "hab_svc": { "Antuco": { "Hot Tub 1 hora": 1 }, "Carran": { "Hot Tub 1 hora": 5 }, "Choshuenco": { "Hot Tub 1 hora": 1 }, "Choshuenco Lanin": { "Hot Tub 1 hora": 1 }, "Lanin": { "Hot Tub 1 hora": 2 }, "Llaima": { "Hot Tub 1 hora": 2 }, "Lonquimay": { "Estacionamiento Playa": 2, "Hot Tub 1 hora": 1 }, "Mocho": { "Estacionamiento Playa": 1, "Hot Tub 1 hora": 3 }, "Osorno": { "Hot Tub 1 hora": 4 }, "Puntiagudo": { "Hot Tub 1 hora": 4 }, "Puyehue": { "Hot Tub 1 hora": 3 }, "Sin dato": { "Estacionamiento Playa": 336 }, "Villarrica": { "Hot Tub 1 hora": 2 } } } };
   function TabOtrosIngresos({ cc }) {
-    const [mesFilter, setMesFilter] = React.useState("Acumulado");
+    const [mesesSel, setMesesSel] = React.useState(new Set(CLOSED_MONTHS));
     const OI = OTROS_INGRESOS[cc === "Magma Lodge" ? "ML" : "CPB"];
     const MESES_CLOSED = CLOSED_MONTHS;
+    const toggleMes = (m) => setMesesSel((prev) => {
+      const next = new Set(prev);
+      if (next.has(m)) {
+        if (next.size > 1) next.delete(m);
+      } else next.add(m);
+      return next;
+    });
+    const selectAcumulado = () => setMesesSel(new Set(CLOSED_MONTHS));
+    const mesesSelArr = MESES_CLOSED.filter((m) => mesesSel.has(m));
+    const isAcumulado = mesesSelArr.length === MESES_CLOSED.length;
+    const mesFilter = isAcumulado ? PERIODO_LABEL : mesesSelArr.length === 1 ? mesesSelArr[0] : mesesSelArr.map((m) => m.slice(0, 3)).join(" + ");
     const svcRows = React.useMemo(() => {
-      return Object.entries(OI.svc_total || {}).map(([svc, total]) => {
-        const mesVal = mesFilter === "Acumulado" ? total : OI.svc_mes[svc]?.[mesFilter] || 0;
-        const nVal = mesFilter === "Acumulado" ? Object.values(OI.svc_n[svc] || {}).reduce((a2, b) => a2 + b, 0) : OI.svc_n[svc]?.[mesFilter] || 0;
-        const totalBase = mesFilter === "Acumulado" ? Object.values(OI.mes_total || {}).reduce((a2, b) => a2 + b, 0) : OI.mes_total[mesFilter] || 0;
+      return Object.entries(OI.svc_total || {}).map(([svc]) => {
+        const mesVal = mesesSelArr.reduce((a2, m) => a2 + (OI.svc_mes[svc]?.[m] || 0), 0);
+        const nVal = mesesSelArr.reduce((a2, m) => a2 + (OI.svc_n[svc]?.[m] || 0), 0);
+        const totalBase = mesesSelArr.reduce((a2, m) => a2 + (OI.mes_total[m] || 0), 0);
         return { svc, val: mesVal, n: nVal, pct: totalBase > 0 ? mesVal / totalBase : 0 };
       }).filter((r2) => r2.val > 0).sort((a2, b) => b.val - a2.val);
-    }, [OI, mesFilter]);
-    const totalPeriodo = mesFilter === "Acumulado" ? Object.values(OI.mes_total || {}).reduce((a2, b) => a2 + b, 0) : (OI.mes_total || {})[mesFilter] || 0;
-    const nPeriodo = mesFilter === "Acumulado" ? Object.values(OI.n_total || {}).reduce((a2, b) => a2 + b, 0) : (OI.n_total || {})[mesFilter] || 0;
+    }, [OI, mesesSel]);
+    const totalPeriodo = mesesSelArr.reduce((a2, m) => a2 + (OI.mes_total?.[m] || 0), 0);
+    const nPeriodo = mesesSelArr.reduce((a2, m) => a2 + (OI.n_total?.[m] || 0), 0);
     const TOP_SVCS = Object.entries(OI.svc_total || {}).sort((a2, b) => b[1] - a2[1]).slice(0, 6).map((x2) => x2[0]);
     const chartData = MESES_CLOSED.map((m) => {
       const obj = { mes: m.slice(0, 3) };
@@ -35205,19 +35155,22 @@
       return obj;
     });
     const canalRows = React.useMemo(() => {
-      return Object.entries(OI.canal_total || {}).map(([canal, total]) => {
-        const mesVal = mesFilter === "Acumulado" ? total : OI.canal_mes[canal]?.[mesFilter] || 0;
+      return Object.entries(OI.canal_total || {}).map(([canal]) => {
+        const mesVal = mesesSelArr.reduce((a2, m) => a2 + (OI.canal_mes[canal]?.[m] || 0), 0);
         return { canal, val: mesVal };
       }).filter((r2) => r2.val > 0).sort((a2, b) => b.val - a2.val);
-    }, [OI, mesFilter]);
+    }, [OI, mesesSel]);
     const habRows = React.useMemo(() => {
-      return Object.entries(OI.hab_total || {}).slice(0, 10).map(([hab, total]) => {
-        const mesVal = mesFilter === "Acumulado" ? total : Object.entries(OI.hab_svc?.[hab] || {}).reduce((acc, [svc]) => {
-          return acc + (OI.svc_mes[svc]?.[mesFilter] || 0);
+      if (isAcumulado) {
+        return Object.entries(OI.hab_total || {}).slice(0, 10).map(([hab, total]) => ({ hab, val: total })).filter((r2) => r2.val > 0).sort((a2, b) => b.val - a2.val).slice(0, 10);
+      }
+      return Object.entries(OI.hab_total || {}).slice(0, 10).map(([hab]) => {
+        const mesVal = mesesSelArr.reduce((acc, m) => {
+          return acc + Object.keys(OI.hab_svc?.[hab] || {}).reduce((a2, svc) => a2 + (OI.svc_mes[svc]?.[m] || 0), 0);
         }, 0);
         return { hab, val: mesVal };
       }).filter((r2) => r2.val > 0).sort((a2, b) => b.val - a2.val).slice(0, 10);
-    }, [OI, mesFilter]);
+    }, [OI, mesesSel, isAcumulado]);
     const BAR_COLORS = [TASCO.navy, TASCO.terracota, TASCO.forest, TASCO.sand, TASCO.slate, "#9b7dbd"];
     return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
       /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", gap: 12, marginBottom: 20, flexWrap: "wrap" }, children: [
@@ -35254,17 +35207,31 @@
       ] }),
       /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", gap: 6, marginBottom: 20, flexWrap: "wrap", alignItems: "center" }, children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { fontSize: 11, color: TASCO.textMuted, marginRight: 4 }, children: "Per\xEDodo:" }),
-        ["Acumulado", ...MESES_CLOSED].map((m) => /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { onClick: () => setMesFilter(m), style: {
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { onClick: selectAcumulado, style: {
           padding: "5px 14px",
           borderRadius: 20,
           fontSize: 11,
-          fontWeight: mesFilter === m ? 700 : 400,
+          fontWeight: isAcumulado ? 700 : 400,
           cursor: "pointer",
           transition: "all .15s",
-          border: mesFilter === m ? "none" : "1px solid " + TASCO.border,
-          background: mesFilter === m ? TASCO.navy : TASCO.white,
-          color: mesFilter === m ? TASCO.white : TASCO.textMuted
-        }, children: m }, m))
+          border: isAcumulado ? "none" : "1px solid " + TASCO.border,
+          background: isAcumulado ? TASCO.navy : TASCO.white,
+          color: isAcumulado ? TASCO.white : TASCO.textMuted
+        }, children: "Acumulado" }),
+        MESES_CLOSED.map((m) => {
+          const active = mesesSel.has(m);
+          return /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { onClick: () => toggleMes(m), style: {
+            padding: "5px 14px",
+            borderRadius: 20,
+            fontSize: 11,
+            fontWeight: active ? 700 : 400,
+            cursor: "pointer",
+            transition: "all .15s",
+            border: active ? "none" : "1px solid " + TASCO.border,
+            background: active ? TASCO.navy : TASCO.white,
+            color: active ? TASCO.white : TASCO.textMuted
+          }, children: m }, m);
+        })
       ] }),
       /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "grid", gridTemplateColumns: "1fr 280px", gap: 16, marginBottom: 16 }, children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: S.card, children: [
@@ -35628,6 +35595,142 @@
       ] })
     ] });
   }
+  function computeHotelKpis(D, cc, MESES) {
+    const lines = D.lines;
+    const sum = (key, campo) => MESES.reduce((a2, m) => a2 + (lines[key]?.[m]?.[campo] || 0), 0);
+    const ing_r26 = sum("Ingresos Totales Departamentales", "r26");
+    const ing_p26 = sum("Ingresos Totales Departamentales", "p26");
+    const ing_r25 = sum("Ingresos Totales Departamentales", "r25");
+    const rbo_r26 = sum("Resultado Bruto de Operaci\xF3n", "r26");
+    const rbo_p26 = sum("Resultado Bruto de Operaci\xF3n", "p26");
+    const rbo_r25 = sum("Resultado Bruto de Operaci\xF3n", "r25");
+    const ebitda_r26 = sum("EBITDA", "r26");
+    const ebitda_p26 = sum("EBITDA", "p26");
+    const ebitda_r25 = sum("EBITDA", "r25");
+    const nd_r26 = sum("Noches de habitaci\xF3n disponibles", "r26");
+    const nd_p26 = sum("Noches de habitaci\xF3n disponibles", "p26");
+    const nd_r25 = sum("Noches de habitaci\xF3n disponibles", "r25");
+    const hab_r26 = sum("Total Ingresos por habitaciones", "r26");
+    const hab_p26 = sum("Total Ingresos por habitaciones", "p26");
+    const hab_r25 = sum("Total Ingresos por habitaciones", "r25");
+    const ocu_r26 = nd_r26 > 0 ? MESES.reduce((a2, m) => {
+      const o = lines["Ocupaci\xF3n"]?.[m]?.r26 || 0;
+      const n = lines["Noches de habitaci\xF3n disponibles"]?.[m]?.r26 || 0;
+      return a2 + o * n;
+    }, 0) / nd_r26 : null;
+    const ocu_p26 = nd_p26 > 0 ? MESES.reduce((a2, m) => {
+      const o = lines["Ocupaci\xF3n"]?.[m]?.p26 || 0;
+      const n = lines["Noches de habitaci\xF3n disponibles"]?.[m]?.p26 || 0;
+      return a2 + o * n;
+    }, 0) / nd_p26 : null;
+    const ocu_r25 = nd_r25 > 0 ? MESES.reduce((a2, m) => {
+      const o = lines["Ocupaci\xF3n"]?.[m]?.r25 || 0;
+      const n = lines["Noches de habitaci\xF3n disponibles"]?.[m]?.r25 || 0;
+      return a2 + o * n;
+    }, 0) / nd_r25 : null;
+    const ocuNights_r26 = MESES.reduce((a2, m) => {
+      const o = lines["Ocupaci\xF3n"]?.[m]?.r26 || 0;
+      const n = lines["Noches de habitaci\xF3n disponibles"]?.[m]?.r26 || 0;
+      return a2 + o * n;
+    }, 0);
+    const ocuNights_p26 = MESES.reduce((a2, m) => {
+      const o = lines["Ocupaci\xF3n"]?.[m]?.p26 || 0;
+      const n = lines["Noches de habitaci\xF3n disponibles"]?.[m]?.p26 || 0;
+      return a2 + o * n;
+    }, 0);
+    const ocuNights_r25 = MESES.reduce((a2, m) => {
+      const o = lines["Ocupaci\xF3n"]?.[m]?.r25 || 0;
+      const n = lines["Noches de habitaci\xF3n disponibles"]?.[m]?.r25 || 0;
+      return a2 + o * n;
+    }, 0);
+    const adr_r26 = ocuNights_r26 > 0 ? hab_r26 / ocuNights_r26 : null;
+    const adr_p26 = ocuNights_p26 > 0 ? hab_p26 / ocuNights_p26 : null;
+    const adr_r25 = ocuNights_r25 > 0 ? hab_r25 / ocuNights_r25 : null;
+    const revpar_r26 = nd_r26 > 0 ? hab_r26 / nd_r26 : null;
+    const revpar_p26 = nd_p26 > 0 ? hab_p26 / nd_p26 : null;
+    const revpar_r25 = nd_r25 > 0 ? hab_r25 / nd_r25 : null;
+    const trevpar_r26 = nd_r26 > 0 ? ing_r26 / nd_r26 : null;
+    const trevpar_p26 = nd_p26 > 0 ? ing_p26 / nd_p26 : null;
+    const trevpar_r25 = nd_r25 > 0 ? ing_r25 / nd_r25 : null;
+    const DC_local = CUENTAS[cc] || [];
+    const AG_ING_GRUP_C = ["Ingresos Habitaciones", "Ingresos Restaurant", "Ingresos Minimarket", "Ingresos Eventos", "Otros Ingresos"];
+    const ingGrupC_r26 = DC_local.reduce((a2, x2) => a2 + (AG_ING_GRUP_C.includes(x2.a) ? MESES.reduce((b, m) => b + (x2.meses[m]?.r26 || 0), 0) : 0), 0);
+    const ingGrupC_p26 = DC_local.reduce((a2, x2) => a2 + (AG_ING_GRUP_C.includes(x2.a) ? MESES.reduce((b, m) => b + (x2.meses[m]?.p26 || 0), 0) : 0), 0);
+    const ingGrupC_r25 = DC_local.reduce((a2, x2) => a2 + (AG_ING_GRUP_C.includes(x2.a) ? MESES.reduce((b, m) => b + (x2.meses[m]?.r25 || 0), 0) : 0), 0);
+    const mrgGrupC_r26 = MESES.reduce((a2, m) => a2 + (D.lines?.["Total Margen Departamentales"]?.[m]?.r26 || 0), 0);
+    const mrgGrupC_p26 = MESES.reduce((a2, m) => a2 + (D.lines?.["Total Margen Departamentales"]?.[m]?.p26 || 0), 0);
+    const mrgGrupC_r25 = MESES.reduce((a2, m) => a2 + (D.lines?.["Total Margen Departamentales"]?.[m]?.r25 || 0), 0);
+    const gop_r26 = ingGrupC_r26 > 0 ? mrgGrupC_r26 / ingGrupC_r26 : null;
+    const gop_p26 = ingGrupC_p26 > 0 ? mrgGrupC_p26 / ingGrupC_p26 : null;
+    const gop_r25 = ingGrupC_r25 > 0 ? mrgGrupC_r25 / ingGrupC_r25 : null;
+    const acct = (code, campo) => MESES.reduce((a2, m) => {
+      const x2 = DC_local.find((c2) => c2.c === code);
+      return a2 + (x2?.meses?.[m]?.[campo] || 0);
+    }, 0);
+    const MNTH_FNS = { Enero: "2026-01", Febrero: "2026-02", Marzo: "2026-03", Abril: "2026-04", Mayo: "2026-05", Junio: "2026-06", Julio: "2026-07", Agosto: "2026-08" };
+    const pbData = FNS_DATA?.VR?.["Pool Bar"] || {};
+    const pb_imp_r26 = MESES.reduce((a2, m) => a2 + (pbData[MNTH_FNS[m]]?.imp || 0) * 1.19, 0);
+    const pb_cst_r26 = MESES.reduce((a2, m) => a2 + (pbData[MNTH_FNS[m]]?.coste || 0) * 1.19, 0);
+    const ag = (key, campo) => MESES.reduce((a2, m) => a2 + (D.agrupaciones?.[key]?.[m]?.[campo] || 0), 0);
+    const ingHab_r26 = ag("Ingresos Habitaciones", "r26");
+    const ingHab_p26 = ag("Ingresos Habitaciones", "p26");
+    const ingHab_r25 = ag("Ingresos Habitaciones", "r25");
+    const cosHab_r26 = ag("Costos Habitaciones", "r26") + ag("Gastos Habitaciones", "r26");
+    const cosHab_p26 = ag("Costos Habitaciones", "p26") + ag("Gastos Habitaciones", "p26");
+    const cosHab_r25 = ag("Costos Habitaciones", "r25") + ag("Gastos Habitaciones", "r25");
+    const mrgHab_r26 = ingHab_r26 > 0 ? (ingHab_r26 - cosHab_r26) / ingHab_r26 : null;
+    const mrgHab_p26 = ingHab_p26 > 0 ? (ingHab_p26 - cosHab_p26) / ingHab_p26 : null;
+    const mrgHab_r25 = ingHab_r25 > 0 ? (ingHab_r25 - cosHab_r25) / ingHab_r25 : null;
+    const isCPB = cc === "Club Playa Blanca";
+    const restFNS = FNS_DATA?.VR?.["Restaurante"] || {};
+    const pbFNS = FNS_DATA?.VR?.["Pool Bar"] || {};
+    const fns_ing_mp = MESES.reduce((a2, m) => {
+      const mk = MNTH_FNS[m] || "";
+      return a2 + (restFNS[mk]?.imp || 0) + (pbFNS[mk]?.imp || 0);
+    }, 0);
+    const fns_cos_mp = MESES.reduce((a2, m) => {
+      const mk = MNTH_FNS[m] || "";
+      return a2 + (restFNS[mk]?.coste || 0) + (pbFNS[mk]?.coste || 0);
+    }, 0);
+    const mrgMP_r26 = isCPB && fns_ing_mp > 0 ? (fns_ing_mp - fns_cos_mp) / fns_ing_mp : null;
+    const mrgMP_p26 = null;
+    const mrgMP_r25 = null;
+    const AG_ING_C = ["Ingresos Restaurant", "Ingresos Minimarket"];
+    const ingAabb_r26 = DC_local.reduce((a2, x2) => a2 + (AG_ING_C.includes(x2.a) ? MESES.reduce((b, m) => b + (x2.meses[m]?.r26 || 0), 0) : 0), 0);
+    const ingAabb_p26 = DC_local.reduce((a2, x2) => a2 + (AG_ING_C.includes(x2.a) ? MESES.reduce((b, m) => b + (x2.meses[m]?.p26 || 0), 0) : 0), 0);
+    const ingAabb_r25 = DC_local.reduce((a2, x2) => a2 + (AG_ING_C.includes(x2.a) ? MESES.reduce((b, m) => b + (x2.meses[m]?.r25 || 0), 0) : 0), 0);
+    const AG_COST = ["Costos Restaurant", "Costos Minimarket"];
+    const cosAabb_r26 = DC_local.reduce((a2, x2) => a2 + (AG_COST.includes(x2.a) ? MESES.reduce((b, m) => b + (x2.meses[m]?.r26 || 0), 0) : 0), 0);
+    const cosAabb_p26 = DC_local.reduce((a2, x2) => a2 + (AG_COST.includes(x2.a) ? MESES.reduce((b, m) => b + (x2.meses[m]?.p26 || 0), 0) : 0), 0);
+    const cosAabb_r25 = DC_local.reduce((a2, x2) => a2 + (AG_COST.includes(x2.a) ? MESES.reduce((b, m) => b + (x2.meses[m]?.r25 || 0), 0) : 0), 0);
+    const mrgAabb_r26 = ingAabb_r26 > 0 ? (ingAabb_r26 - cosAabb_r26) / ingAabb_r26 : null;
+    const mrgAabb_p26 = ingAabb_p26 > 0 ? (ingAabb_p26 - cosAabb_p26) / ingAabb_p26 : null;
+    const mrgAabb_r25 = ingAabb_r25 > 0 ? (ingAabb_r25 - cosAabb_r25) / ingAabb_r25 : null;
+    const mrgOp_r26 = ing_r26 > 0 ? rbo_r26 / ing_r26 : null;
+    const mrgOp_p26 = ing_p26 > 0 ? rbo_p26 / ing_p26 : null;
+    const mrgOp_r25 = ing_r25 > 0 ? rbo_r25 / ing_r25 : null;
+    const mrgEb_r26 = ing_r26 > 0 ? ebitda_r26 / ing_r26 : null;
+    const mrgEb_p26 = ing_p26 > 0 ? ebitda_p26 / ing_p26 : null;
+    const mrgEb_r25 = ing_r25 > 0 ? ebitda_r25 / ing_r25 : null;
+    const label = MESES.length > 1 ? `Ene\u2013${MESES[MESES.length - 1].slice(0, 3)} 2026` : `${MESES[0]} 2026`;
+    return {
+      label,
+      ocu: { v: ocu_r26, ref: ocu_p26, prev: ocu_r25, type: "pct" },
+      adr: { v: adr_r26, ref: adr_p26, prev: adr_r25, type: "clp" },
+      revpar: { v: revpar_r26, ref: revpar_p26, prev: revpar_r25, type: "clp" },
+      trevpar: { v: trevpar_r26, ref: trevpar_p26, prev: trevpar_r25, type: "clp" },
+      ing: { v: ing_r26, ref: ing_p26, prev: ing_r25, type: "clp" },
+      rbo: { v: rbo_r26, ref: rbo_p26, prev: rbo_r25, type: "clp" },
+      ebitda: { v: ebitda_r26, ref: ebitda_p26, prev: ebitda_r25, type: "clp" },
+      gopPct: { v: gop_r26, ref: gop_p26, prev: gop_r25, type: "pct2" },
+      mrgHab: { v: mrgHab_r26, ref: mrgHab_p26, prev: mrgHab_r25, type: "pct2" },
+      mrgMP: { v: mrgMP_r26, ref: mrgMP_p26, prev: mrgMP_r25, type: "pct2" },
+      mrgAabb: { v: mrgAabb_r26, ref: mrgAabb_p26, prev: mrgAabb_r25, type: "pct2" },
+      mrgOp: { v: mrgOp_r26, ref: mrgOp_p26, prev: mrgOp_r25, type: "pct2" },
+      mrgEb: { v: mrgEb_r26, ref: mrgEb_p26, prev: mrgEb_r25, type: "pct2" },
+      isCPB
+    };
+  }
   function Dashboard() {
     const [cc, setCC] = (0, import_react59.useState)("Club Playa Blanca");
     const [activeTab, setActiveTab] = (0, import_react59.useState)("kpis");
@@ -35686,142 +35789,7 @@
         };
       });
     }, [cc, D]);
-    const kpiConsolidado = (0, import_react59.useMemo)(() => {
-      const lines = D.lines;
-      const sum = (key, campo) => CLOSED_MONTHS.reduce((a2, m) => a2 + (lines[key]?.[m]?.[campo] || 0), 0);
-      const ing_r26 = sum("Ingresos Totales Departamentales", "r26");
-      const ing_p26 = sum("Ingresos Totales Departamentales", "p26");
-      const ing_r25 = sum("Ingresos Totales Departamentales", "r25");
-      const rbo_r26 = sum("Resultado Bruto de Operaci\xF3n", "r26");
-      const rbo_p26 = sum("Resultado Bruto de Operaci\xF3n", "p26");
-      const rbo_r25 = sum("Resultado Bruto de Operaci\xF3n", "r25");
-      const ebitda_r26 = sum("EBITDA", "r26");
-      const ebitda_p26 = sum("EBITDA", "p26");
-      const ebitda_r25 = sum("EBITDA", "r25");
-      const nd_r26 = sum("Noches de habitaci\xF3n disponibles", "r26");
-      const nd_p26 = sum("Noches de habitaci\xF3n disponibles", "p26");
-      const nd_r25 = sum("Noches de habitaci\xF3n disponibles", "r25");
-      const hab_r26 = sum("Total Ingresos por habitaciones", "r26");
-      const hab_p26 = sum("Total Ingresos por habitaciones", "p26");
-      const hab_r25 = sum("Total Ingresos por habitaciones", "r25");
-      const ocu_r26 = nd_r26 > 0 ? CLOSED_MONTHS.reduce((a2, m) => {
-        const o = lines["Ocupaci\xF3n"]?.[m]?.r26 || 0;
-        const n = lines["Noches de habitaci\xF3n disponibles"]?.[m]?.r26 || 0;
-        return a2 + o * n;
-      }, 0) / nd_r26 : null;
-      const ocu_p26 = nd_p26 > 0 ? CLOSED_MONTHS.reduce((a2, m) => {
-        const o = lines["Ocupaci\xF3n"]?.[m]?.p26 || 0;
-        const n = lines["Noches de habitaci\xF3n disponibles"]?.[m]?.p26 || 0;
-        return a2 + o * n;
-      }, 0) / nd_p26 : null;
-      const ocu_r25 = nd_r25 > 0 ? CLOSED_MONTHS.reduce((a2, m) => {
-        const o = lines["Ocupaci\xF3n"]?.[m]?.r25 || 0;
-        const n = lines["Noches de habitaci\xF3n disponibles"]?.[m]?.r25 || 0;
-        return a2 + o * n;
-      }, 0) / nd_r25 : null;
-      const ocuNights_r26 = CLOSED_MONTHS.reduce((a2, m) => {
-        const o = lines["Ocupaci\xF3n"]?.[m]?.r26 || 0;
-        const n = lines["Noches de habitaci\xF3n disponibles"]?.[m]?.r26 || 0;
-        return a2 + o * n;
-      }, 0);
-      const ocuNights_p26 = CLOSED_MONTHS.reduce((a2, m) => {
-        const o = lines["Ocupaci\xF3n"]?.[m]?.p26 || 0;
-        const n = lines["Noches de habitaci\xF3n disponibles"]?.[m]?.p26 || 0;
-        return a2 + o * n;
-      }, 0);
-      const ocuNights_r25 = CLOSED_MONTHS.reduce((a2, m) => {
-        const o = lines["Ocupaci\xF3n"]?.[m]?.r25 || 0;
-        const n = lines["Noches de habitaci\xF3n disponibles"]?.[m]?.r25 || 0;
-        return a2 + o * n;
-      }, 0);
-      const adr_r26 = ocuNights_r26 > 0 ? hab_r26 / ocuNights_r26 : null;
-      const adr_p26 = ocuNights_p26 > 0 ? hab_p26 / ocuNights_p26 : null;
-      const adr_r25 = ocuNights_r25 > 0 ? hab_r25 / ocuNights_r25 : null;
-      const revpar_r26 = nd_r26 > 0 ? hab_r26 / nd_r26 : null;
-      const revpar_p26 = nd_p26 > 0 ? hab_p26 / nd_p26 : null;
-      const revpar_r25 = nd_r25 > 0 ? hab_r25 / nd_r25 : null;
-      const trevpar_r26 = nd_r26 > 0 ? ing_r26 / nd_r26 : null;
-      const trevpar_p26 = nd_p26 > 0 ? ing_p26 / nd_p26 : null;
-      const trevpar_r25 = nd_r25 > 0 ? ing_r25 / nd_r25 : null;
-      const DC_local = CUENTAS[cc] || [];
-      const AG_ING_GRUP_C = ["Ingresos Habitaciones", "Ingresos Restaurant", "Ingresos Minimarket", "Ingresos Eventos", "Otros Ingresos"];
-      const ingGrupC_r26 = DC_local.reduce((a2, x2) => a2 + (AG_ING_GRUP_C.includes(x2.a) ? CLOSED_MONTHS.reduce((b, m) => b + (x2.meses[m]?.r26 || 0), 0) : 0), 0);
-      const ingGrupC_p26 = DC_local.reduce((a2, x2) => a2 + (AG_ING_GRUP_C.includes(x2.a) ? CLOSED_MONTHS.reduce((b, m) => b + (x2.meses[m]?.p26 || 0), 0) : 0), 0);
-      const ingGrupC_r25 = DC_local.reduce((a2, x2) => a2 + (AG_ING_GRUP_C.includes(x2.a) ? CLOSED_MONTHS.reduce((b, m) => b + (x2.meses[m]?.r25 || 0), 0) : 0), 0);
-      const mrgGrupC_r26 = CLOSED_MONTHS.reduce((a2, m) => a2 + (D.lines?.["Total Margen Departamentales"]?.[m]?.r26 || 0), 0);
-      const mrgGrupC_p26 = CLOSED_MONTHS.reduce((a2, m) => a2 + (D.lines?.["Total Margen Departamentales"]?.[m]?.p26 || 0), 0);
-      const mrgGrupC_r25 = CLOSED_MONTHS.reduce((a2, m) => a2 + (D.lines?.["Total Margen Departamentales"]?.[m]?.r25 || 0), 0);
-      const gop_r26 = ingGrupC_r26 > 0 ? mrgGrupC_r26 / ingGrupC_r26 : null;
-      const gop_p26 = ingGrupC_p26 > 0 ? mrgGrupC_p26 / ingGrupC_p26 : null;
-      const gop_r25 = ingGrupC_r25 > 0 ? mrgGrupC_r25 / ingGrupC_r25 : null;
-      const acct = (code, campo) => CLOSED_MONTHS.reduce((a2, m) => {
-        const x2 = DC_local.find((c2) => c2.c === code);
-        return a2 + (x2?.meses?.[m]?.[campo] || 0);
-      }, 0);
-      const MNTH_FNS = { Enero: "2026-01", Febrero: "2026-02", Marzo: "2026-03", Abril: "2026-04", Mayo: "2026-05", Junio: "2026-06", Julio: "2026-07", Agosto: "2026-08" };
-      const pbData = FNS_DATA?.VR?.["Pool Bar"] || {};
-      const pb_imp_r26 = CLOSED_MONTHS.reduce((a2, m) => a2 + (pbData[MNTH_FNS[m]]?.imp || 0) * 1.19, 0);
-      const pb_cst_r26 = CLOSED_MONTHS.reduce((a2, m) => a2 + (pbData[MNTH_FNS[m]]?.coste || 0) * 1.19, 0);
-      const ag = (key, campo) => CLOSED_MONTHS.reduce((a2, m) => a2 + (D.agrupaciones?.[key]?.[m]?.[campo] || 0), 0);
-      const ingHab_r26 = ag("Ingresos Habitaciones", "r26");
-      const ingHab_p26 = ag("Ingresos Habitaciones", "p26");
-      const ingHab_r25 = ag("Ingresos Habitaciones", "r25");
-      const cosHab_r26 = ag("Costos Habitaciones", "r26") + ag("Gastos Habitaciones", "r26");
-      const cosHab_p26 = ag("Costos Habitaciones", "p26") + ag("Gastos Habitaciones", "p26");
-      const cosHab_r25 = ag("Costos Habitaciones", "r25") + ag("Gastos Habitaciones", "r25");
-      const mrgHab_r26 = ingHab_r26 > 0 ? (ingHab_r26 - cosHab_r26) / ingHab_r26 : null;
-      const mrgHab_p26 = ingHab_p26 > 0 ? (ingHab_p26 - cosHab_p26) / ingHab_p26 : null;
-      const mrgHab_r25 = ingHab_r25 > 0 ? (ingHab_r25 - cosHab_r25) / ingHab_r25 : null;
-      const isCPB = cc === "Club Playa Blanca";
-      const restFNS = FNS_DATA?.VR?.["Restaurante"] || {};
-      const pbFNS = FNS_DATA?.VR?.["Pool Bar"] || {};
-      const fns_ing_mp = CLOSED_MONTHS.reduce((a2, m) => {
-        const mk = MNTH_FNS[m] || "";
-        return a2 + (restFNS[mk]?.imp || 0) + (pbFNS[mk]?.imp || 0);
-      }, 0);
-      const fns_cos_mp = CLOSED_MONTHS.reduce((a2, m) => {
-        const mk = MNTH_FNS[m] || "";
-        return a2 + (restFNS[mk]?.coste || 0) + (pbFNS[mk]?.coste || 0);
-      }, 0);
-      const mrgMP_r26 = isCPB && fns_ing_mp > 0 ? (fns_ing_mp - fns_cos_mp) / fns_ing_mp : null;
-      const mrgMP_p26 = null;
-      const mrgMP_r25 = null;
-      const AG_ING_C = ["Ingresos Restaurant", "Ingresos Minimarket"];
-      const ingAabb_r26 = DC_local.reduce((a2, x2) => a2 + (AG_ING_C.includes(x2.a) ? CLOSED_MONTHS.reduce((b, m) => b + (x2.meses[m]?.r26 || 0), 0) : 0), 0);
-      const ingAabb_p26 = DC_local.reduce((a2, x2) => a2 + (AG_ING_C.includes(x2.a) ? CLOSED_MONTHS.reduce((b, m) => b + (x2.meses[m]?.p26 || 0), 0) : 0), 0);
-      const ingAabb_r25 = DC_local.reduce((a2, x2) => a2 + (AG_ING_C.includes(x2.a) ? CLOSED_MONTHS.reduce((b, m) => b + (x2.meses[m]?.r25 || 0), 0) : 0), 0);
-      const AG_COST = ["Costos Restaurant", "Costos Minimarket"];
-      const cosAabb_r26 = DC_local.reduce((a2, x2) => a2 + (AG_COST.includes(x2.a) ? CLOSED_MONTHS.reduce((b, m) => b + (x2.meses[m]?.r26 || 0), 0) : 0), 0);
-      const cosAabb_p26 = DC_local.reduce((a2, x2) => a2 + (AG_COST.includes(x2.a) ? CLOSED_MONTHS.reduce((b, m) => b + (x2.meses[m]?.p26 || 0), 0) : 0), 0);
-      const cosAabb_r25 = DC_local.reduce((a2, x2) => a2 + (AG_COST.includes(x2.a) ? CLOSED_MONTHS.reduce((b, m) => b + (x2.meses[m]?.r25 || 0), 0) : 0), 0);
-      const mrgAabb_r26 = ingAabb_r26 > 0 ? (ingAabb_r26 - cosAabb_r26) / ingAabb_r26 : null;
-      const mrgAabb_p26 = ingAabb_p26 > 0 ? (ingAabb_p26 - cosAabb_p26) / ingAabb_p26 : null;
-      const mrgAabb_r25 = ingAabb_r25 > 0 ? (ingAabb_r25 - cosAabb_r25) / ingAabb_r25 : null;
-      const mrgOp_r26 = ing_r26 > 0 ? rbo_r26 / ing_r26 : null;
-      const mrgOp_p26 = ing_p26 > 0 ? rbo_p26 / ing_p26 : null;
-      const mrgOp_r25 = ing_r25 > 0 ? rbo_r25 / ing_r25 : null;
-      const mrgEb_r26 = ing_r26 > 0 ? ebitda_r26 / ing_r26 : null;
-      const mrgEb_p26 = ing_p26 > 0 ? ebitda_p26 / ing_p26 : null;
-      const mrgEb_r25 = ing_r25 > 0 ? ebitda_r25 / ing_r25 : null;
-      const label = CLOSED_MONTHS.length > 1 ? `Ene\u2013${CLOSED_MONTHS[CLOSED_MONTHS.length - 1].slice(0, 3)} 2026` : `${CLOSED_MONTHS[0]} 2026`;
-      return {
-        label,
-        ocu: { v: ocu_r26, ref: ocu_p26, prev: ocu_r25, type: "pct" },
-        adr: { v: adr_r26, ref: adr_p26, prev: adr_r25, type: "clp" },
-        revpar: { v: revpar_r26, ref: revpar_p26, prev: revpar_r25, type: "clp" },
-        trevpar: { v: trevpar_r26, ref: trevpar_p26, prev: trevpar_r25, type: "clp" },
-        ing: { v: ing_r26, ref: ing_p26, prev: ing_r25, type: "clp" },
-        rbo: { v: rbo_r26, ref: rbo_p26, prev: rbo_r25, type: "clp" },
-        ebitda: { v: ebitda_r26, ref: ebitda_p26, prev: ebitda_r25, type: "clp" },
-        gopPct: { v: gop_r26, ref: gop_p26, prev: gop_r25, type: "pct2" },
-        mrgHab: { v: mrgHab_r26, ref: mrgHab_p26, prev: mrgHab_r25, type: "pct2" },
-        mrgMP: { v: mrgMP_r26, ref: mrgMP_p26, prev: mrgMP_r25, type: "pct2" },
-        mrgAabb: { v: mrgAabb_r26, ref: mrgAabb_p26, prev: mrgAabb_r25, type: "pct2" },
-        mrgOp: { v: mrgOp_r26, ref: mrgOp_p26, prev: mrgOp_r25, type: "pct2" },
-        mrgEb: { v: mrgEb_r26, ref: mrgEb_p26, prev: mrgEb_r25, type: "pct2" },
-        isCPB
-      };
-    }, [cc, D]);
+    const kpiConsolidado = (0, import_react59.useMemo)(() => computeHotelKpis(D, cc, CLOSED_MONTHS), [cc, D]);
     const ingresosChart = (0, import_react59.useMemo)(() => {
       const ing = D.lines["Ingresos Totales Departamentales"];
       return MONTHS.map((m) => ({
