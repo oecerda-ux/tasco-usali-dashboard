@@ -34288,8 +34288,8 @@
       });
       const sortFnBud = sortMode === "monto" ? (a2, b) => Math.abs(b.r26 - b.p26) - Math.abs(a2.r26 - a2.p26) : (a2, b) => b.absBud - a2.absBud;
       const sortFnYoy = sortMode === "monto" ? (a2, b) => Math.abs(b.r26 - b.r25) - Math.abs(a2.r26 - a2.r25) : (a2, b) => b.absYoy - a2.absYoy;
-      const topBud = [...rows].filter((r2) => r2.vBud !== null && r2.absBud > 0.05).sort(sortFnBud).slice(0, 10);
-      const topYoy = [...rows].filter((r2) => r2.vYoy !== null && r2.absYoy > 0.05).sort(sortFnYoy).slice(0, 10);
+      const topBud = [...rows].filter((r2) => sortMode === "monto" ? Math.abs(r2.r26 - r2.p26) > 0 : r2.vBud !== null && r2.absBud > 0.05).sort(sortFnBud).slice(0, 10);
+      const topYoy = [...rows].filter((r2) => sortMode === "monto" ? Math.abs(r2.r26 - r2.r25) > 0 : r2.vYoy !== null && r2.absYoy > 0.05).sort(sortFnYoy).slice(0, 10);
       return { topBud, topYoy };
     }, [DC, acumMonths, sortMode]);
     const fmtM = (v) => {
