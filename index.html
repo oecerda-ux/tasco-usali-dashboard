@@ -34758,8 +34758,8 @@
   function TabPuntoDeVenta({ cc, D }) {
     const isCPB = cc === "Club Playa Blanca";
     const isML = !isCPB;
-    const MESES_LABEL = { "2026-01": "Enero", "2026-02": "Febrero", "2026-03": "Marzo", "2026-04": "Abril", "2026-05": "Mayo", "2026-06": "Junio" };
-    const MES_NUM_MAP = { "Enero": "2026-01", "Febrero": "2026-02", "Marzo": "2026-03", "Abril": "2026-04", "Mayo": "2026-05", "Junio": "2026-06" };
+    const MESES_LABEL = { "2026-01": "Enero", "2026-02": "Febrero", "2026-03": "Marzo", "2026-04": "Abril", "2026-05": "Mayo", "2026-06": "Junio", "2026-07": "Julio", "2026-08": "Agosto", "2026-09": "Septiembre", "2026-10": "Octubre", "2026-11": "Noviembre", "2026-12": "Diciembre" };
+    const MES_NUM_MAP = { "Enero": "2026-01", "Febrero": "2026-02", "Marzo": "2026-03", "Abril": "2026-04", "Mayo": "2026-05", "Junio": "2026-06", "Julio": "2026-07", "Agosto": "2026-08", "Septiembre": "2026-09", "Octubre": "2026-10", "Noviembre": "2026-11", "Diciembre": "2026-12" };
     const MESES = CLOSED_MONTHS.map((m) => MES_NUM_MAP[m]).filter(Boolean);
     const defaultMes = MESES[MESES.length - 1] || "2026-01";
     const [mesesSel, setMesesSel] = React.useState(/* @__PURE__ */ new Set([defaultMes]));
@@ -35163,7 +35163,7 @@
           {
             barCategoryGap: "30%",
             data: Object.entries(FNS.vr_mes || {}).sort((a2, b) => a2[0].localeCompare(b[0])).map(([ym, v]) => ({
-              mes: { "2026-01": "Ene", "2026-02": "Feb", "2026-03": "Mar", "2026-04": "Abr" }[ym] || ym,
+              mes: { "2026-01": "Ene", "2026-02": "Feb", "2026-03": "Mar", "2026-04": "Abr", "2026-05": "May", "2026-06": "Jun", "2026-07": "Jul", "2026-08": "Ago", "2026-09": "Sep", "2026-10": "Oct", "2026-11": "Nov", "2026-12": "Dic" }[ym] || ym,
               "A&B": Math.round((FNS.VR?.["Restaurant A&B"]?.[ym]?.imp || 0) / 1e6 * 100) / 100,
               Frigobar: Math.round((FNS.VR?.["Frigobar"]?.[ym]?.imp || 0) / 1e6 * 100) / 100
             })),
